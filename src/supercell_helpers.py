@@ -12,10 +12,6 @@ def preprocess_data(sub_adata, n_genes=2000, npcs=40, percent_cells=0.7):
     :return: ad_sub: preprocessed data with log1 transformed count data
     """
 
-    # sample cells
-    sampling_vec = np.random.rand(sub_adata.shape[0]) < percent_cells
-    sub_adata = sub_adata[sampling_vec, :]
-
     sc.pp.normalize_total(sub_adata, target_sum=1e4)
     sc.pp.log1p(sub_adata)
     sc.pp.highly_variable_genes(
@@ -61,6 +57,7 @@ def get_leiden_based_on_ncell(ad_sub, resolutions, num_cells, verbose):
     :param verbose: Whether or not to print along the way
     :return: ad_sub: adata of single celltype with clusters in leiden
     """
+    resolutions = np.arange(0.1, 1000, 0.1)
     vec_length = len(resolutions)
     iter_ = int(vec_length / 2)
     last_iter = 0
@@ -129,3 +126,18 @@ def get_merged_dataset(adata_all, merged_obs):
     all_merged.X = np.round(all_merged.X)
 
     return all_merged
+
+def pipeline(adata, ngenes=2000, npcs = 20):
+    saved_counts = adata.X.copy()
+    
+    # Run PCA and find nearest neighbors
+    sub_cells = preprocess_data(sub_cells, n_genes=ngene, npcs=npcs)
+    
+    temp = get_leiden_based_on_ncell(sub_cells, resolutions, threshold, verbose)
+
+    adata.X = saved_counts
+    
+    sc.pp.normalize_total(adata, target_sum=1e4)
+    merged_data = get_merged_dataset(adata, [temp.obs])
+    
+    return merged_data
