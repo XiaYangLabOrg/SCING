@@ -49,7 +49,7 @@ def merge_cells(ads, variable_to_merge='leiden'):
     return merged_cells
 
 
-def get_leiden_based_on_ncell(ad_sub, resolutions, num_cells, verbose):
+def get_leiden_based_on_ncell(ad_sub, num_cells, verbose):
     """
     :param ad_sub: adata of single celltype
     :param resolutions: np vector of resolutions to test
@@ -65,24 +65,19 @@ def get_leiden_based_on_ncell(ad_sub, resolutions, num_cells, verbose):
         vec_length = abs(iter_ - last_iter)
         sc.tl.leiden(ad_sub, resolution=resolutions[iter_])
 
-        # get number of cells per group on average
-        cell_counter = Counter(ad_sub.obs.leiden)
-        cell_counts = pd.DataFrame.from_dict(cell_counter, orient='index').reset_index()
-        avg_num_cell_in_group = np.mean(cell_counts.iloc[:, 1].to_numpy().ravel())
-
-        if verbose:
-            print(avg_num_cell_in_group)
-
         if abs(iter_ - last_iter) <= 1:
             break
+	
+        ncells_in_merged = len(np.unique(ad_sub.obs.leiden.to_numpy().ravel()))
+        print(ncells_in_merged)
+        
 
         last_iter = iter_
 
-        if avg_num_cell_in_group > num_cells:
+        if ncells_in_merged < num_cells:
             iter_ += int(vec_length / 2)
-        elif avg_num_cell_in_group <= num_cells:
+        elif ncells_in_merged >= num_cells:
             iter_ -= int(vec_length / 2)
-
     sc.tl.leiden(ad_sub, resolution=resolutions[iter_])
 
     if verbose:
@@ -93,7 +88,7 @@ def get_leiden_based_on_ncell(ad_sub, resolutions, num_cells, verbose):
     return ad_sub
 
 
-def get_merged_dataset(adata_all, merged_obs):
+def get_merged_dataset(adata_all, obs):
     """
     :param adata_all: original adata with counts
     :param merged_obs: list of obs with leiden for each cell type
@@ -101,43 +96,44 @@ def get_merged_dataset(adata_all, merged_obs):
     """
     # counter number of super cells
     num_super_cells = 0
-    for obs in merged_obs:
-        num_super_cells += len(np.unique(obs.leiden))
+    
+    num_super_cells += len(np.unique(obs.leiden))
 
     # merge datasets
     new_data = np.zeros((num_super_cells, adata_all.X.shape[1]))
 
     new_celltypes = []
     current_loc = 0
-    for obs in merged_obs:
-        sub_cell = adata_all[np.isin(adata_all.obs.index,
-                                     obs.index)]
-        num_current_cell = len(np.unique(obs.leiden))
-        new_celltypes += [np.unique(obs.celltypes.to_numpy().ravel()) for _ in range(num_current_cell)]
-        sub_cell.obs = obs
-        merged = merge_cells(sub_cell)
-        new_data[current_loc:(current_loc + num_current_cell), :] = merged.X
-        current_loc += num_current_cell
+    sub_cell = adata_all[np.isin(adata_all.obs.index,
+                                 obs.index)]
+    num_current_cell = len(np.unique(obs.leiden))
+    sub_cell.obs = obs
+    merged = merge_cells(sub_cell)
+    new_data[current_loc:(current_loc + num_current_cell), :] = merged.X
+    current_loc += num_current_cell
 
     new_celltypes = np.array(new_celltypes)
 
     all_merged = sc.AnnData(new_data, obs=new_celltypes, var=adata_all.var)
-    all_merged.obs.columns = ['celltypes']
+
     all_merged.X = np.round(all_merged.X)
 
     return all_merged
 
-def pipeline(adata, ngenes=2000, npcs = 20):
+def pipeline(adata, ngenes=2000, npcs=20,ncell=500,verbose=True):
     saved_counts = adata.X.copy()
     
     # Run PCA and find nearest neighbors
-    sub_cells = preprocess_data(sub_cells, n_genes=ngene, npcs=npcs)
+    if verbose: print('preprocessing data...')
+    sub_cells = preprocess_data(adata, n_genes=ngenes, npcs=npcs)
     
-    temp = get_leiden_based_on_ncell(sub_cells, resolutions, threshold, verbose)
+    if verbose: print('finding optimal resolution...')
+    temp = get_leiden_based_on_ncell(sub_cells, ncell, verbose)
 
     adata.X = saved_counts
     
     sc.pp.normalize_total(adata, target_sum=1e4)
-    merged_data = get_merged_dataset(adata, [temp.obs])
+    if verbose: print('merging cells...')
+    merged_data = get_merged_dataset(adata, temp.obs)
     
     return merged_data
