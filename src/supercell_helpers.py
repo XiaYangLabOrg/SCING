@@ -1,0 +1,197 @@
+import scanpy as sc
+import pandas as pd
+import numpy as np
+from collections import Counter
+
+
+def preprocess_data(sub_adata, n_genes=2000, npcs=40, percent_cells=0.7):
+    """
+    :param sub_adata: scanpy object of cell types
+    :param n_genes: number of variable genes to use
+    :param npcs: number of pcs to use for preprocessing
+    :return: ad_sub: preprocessed data with log1 transformed count data
+    """
+
+    # sample cells
+    sampling_vec = np.random.rand(sub_adata.shape[0]) < percent_cells
+    sub_adata = sub_adata[sampling_vec, :]
+
+    sc.pp.normalize_total(sub_adata, target_sum=1e4)
+    sc.pp.log1p(sub_adata)
+    sc.pp.highly_variable_genes(
+        sub_adata, min_mean=0.0125, max_mean=3, min_disp=0.5, n_top_genes=n_genes)
+    sub_adata = sub_adata[:, sub_adata.var.highly_variable]
+
+    ad_sub = sc.AnnData(sub_adata.X, obs=sub_adata.obs, var=sub_adata.var)
+
+    saved_log_mat = ad_sub.X.copy()
+
+    sc.pp.scale(ad_sub)
+    sc.tl.pca(ad_sub, svd_solver='arpack', n_comps=min(npcs, sub_adata.shape[0] - 1))
+
+    sc.pp.neighbors(ad_sub, n_neighbors=10, n_pcs=min(npcs, sub_adata.shape[0] - 1))
+
+    ad_sub.X = saved_log_mat
+
+    return ad_sub
+
+
+def merge_cells(ads, variable_to_merge='leiden'):
+    """
+    :param ads: adata of cells to be merged.
+    :param variable_to_merge: observation variable to merge data by (default: leiden)
+    :return: merged_data: adata of merged cells
+    """
+    clust_assignment = ads.obs.loc[:, variable_to_merge].to_numpy()
+    clusts = np.unique(clust_assignment)
+    ncells = len(clusts)
+    new_mat = np.zeros((ncells, ads.shape[1]))
+    for i, c in enumerate(clusts):
+        locs = np.where(clust_assignment == c)[0]
+        new_mat[i, :] = np.mean(ads.X[locs, :], axis=0)
+    merged_cells = sc.AnnData(new_mat, var=ads.var)
+    return merged_cells
+
+
+def merge_cells_and_check_percent_zeros(ad_sub, resolutions, var_thresh, verbose):
+    """
+    :param ad_sub: adata object
+    :param resolutions: vector of resolutions to binary search through
+    :param var_thresh: fraction of variance to keep
+    :return: ad_sub: adata object with leiden obs added
+    """
+    all_var = np.mean(np.var(ad_sub.X, axis=1))
+    vec_length = len(resolutions)
+    iter_ = int(vec_length / 2)
+    last_iter = 0
+    while True:
+        # print(i)
+        vec_length = abs(iter_ - last_iter)
+        sc.tl.leiden(ad_sub, resolution=resolutions[iter_])
+        merged = merge_cells(ad_sub)
+        zero_mean = np.mean(np.mean(merged.X == 0, axis=1).ravel())
+
+        if abs(iter_ - last_iter) <= 1:
+            break
+
+        last_iter = iter_
+
+        if zero_mean / all_var <= var_thresh:
+            iter_ += int(vec_length / 2)
+        elif zero_mean / all_var > var_thresh:
+            iter_ -= int(vec_length / 2)
+
+    sc.tl.leiden(ad_sub, resolution=resolutions[iter_])
+
+    return ad_sub
+
+
+def merge_cells_and_check_percent_var(ad_sub, resolutions, zero_thresh, verbose):
+    """
+    :param ad_sub: adata object
+    :param resolutions: vector of resolutions to binary search through
+    :param zero_thresh: fraction of variance to keep
+    :return: ad_sub: adata object with leiden obs added
+    """
+    all_var = np.mean(np.var(ad_sub.X, axis=1))
+    vec_length = len(resolutions)
+    iter_ = int(vec_length / 2)
+    last_iter = 0
+    while True:
+        # print(i)
+        vec_length = abs(iter_ - last_iter)
+        sc.tl.leiden(ad_sub, resolution=resolutions[iter_])
+        merged = merge_cells(ad_sub)
+        sub_var = np.mean(np.var(merged.X, axis=1))
+
+        if abs(iter_ - last_iter) <= 1:
+            break
+
+        last_iter = iter_
+
+        if sub_var / all_var <= zero_thresh:
+            iter_ += int(vec_length / 2)
+        elif sub_var / all_var > zero_thresh:
+            iter_ -= int(vec_length / 2)
+
+    sc.tl.leiden(ad_sub, resolution=resolutions[iter_])
+
+    return ad_sub
+
+
+def get_leiden_based_on_ncell(ad_sub, resolutions, num_cells, verbose):
+    """
+    :param ad_sub: adata of single celltype
+    :param resolutions: np vector of resolutions to test
+    :param num_cells: average number of cells per cluster
+    :param verbose: Whether or not to print along the way
+    :return: ad_sub: adata of single celltype with clusters in leiden
+    """
+    vec_length = len(resolutions)
+    iter_ = int(vec_length / 2)
+    last_iter = 0
+    while True:
+        vec_length = abs(iter_ - last_iter)
+        sc.tl.leiden(ad_sub, resolution=resolutions[iter_])
+
+        # get number of cells per group on average
+        cell_counter = Counter(ad_sub.obs.leiden)
+        cell_counts = pd.DataFrame.from_dict(cell_counter, orient='index').reset_index()
+        avg_num_cell_in_group = np.mean(cell_counts.iloc[:, 1].to_numpy().ravel())
+
+        if verbose:
+            print(avg_num_cell_in_group)
+
+        if abs(iter_ - last_iter) <= 1:
+            break
+
+        last_iter = iter_
+
+        if avg_num_cell_in_group > num_cells:
+            iter_ += int(vec_length / 2)
+        elif avg_num_cell_in_group <= num_cells:
+            iter_ -= int(vec_length / 2)
+
+    sc.tl.leiden(ad_sub, resolution=resolutions[iter_])
+
+    if verbose:
+        print('There are ',
+              len(np.unique(ad_sub.obs.leiden.to_numpy().ravel())),
+              ' subgroups')
+
+    return ad_sub
+
+
+def get_merged_dataset(adata_all, merged_obs):
+    """
+    :param adata_all: original adata with counts
+    :param merged_obs: list of obs with leiden for each cell type
+    :return: all_merged: merged adata with supercells
+    """
+    # counter number of super cells
+    num_super_cells = 0
+    for obs in merged_obs:
+        num_super_cells += len(np.unique(obs.leiden))
+
+    # merge datasets
+    new_data = np.zeros((num_super_cells, adata_all.X.shape[1]))
+
+    new_celltypes = []
+    current_loc = 0
+    for obs in merged_obs:
+        sub_cell = adata_all[np.isin(adata_all.obs.index,
+                                     obs.index)]
+        num_current_cell = len(np.unique(obs.leiden))
+        new_celltypes += [np.unique(obs.celltypes.to_numpy().ravel()) for _ in range(num_current_cell)]
+        sub_cell.obs = obs
+        merged = merge_cells(sub_cell)
+        new_data[current_loc:(current_loc + num_current_cell), :] = merged.X
+        current_loc += num_current_cell
+
+    new_celltypes = np.array(new_celltypes)
+
+    all_merged = sc.AnnData(new_data, obs=new_celltypes, var=adata_all.var)
+    all_merged.obs.columns = ['celltypes']
+    all_merged.X = np.round(all_merged.X)
+
+    return all_merged
