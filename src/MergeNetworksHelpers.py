@@ -13,7 +13,8 @@ from sklearn.preprocessing import quantile_transform, scale
 
 class NetworkMerger:
 
-    def __init__(self, adata, networks, prefix,
+    def __init__(self, adata, networks, minimum_edge_appearance_threshold,
+                 prefix,
                  outdir, ncore, mem_per_core,
                  verbose):
 
@@ -22,6 +23,8 @@ class NetworkMerger:
         self.dge.index = self.adata.var.index
         
         self.networks = networks
+        
+        self.frac_networks = minimum_edge_appearance_threshold
 
         self.prefix = prefix
         self.outdir = outdir
@@ -74,8 +77,8 @@ class NetworkMerger:
 
         summarized_network = pd.DataFrame(columns=['From', 'To', 'Weight', 'FractionAppeared'])
         for e in edge_weights:
-            # change this to a hyper parameter
-            if edge_number_appear[e] > 0.2:
+            # only keep edges if in at least self.frac_networks fraction of the networks
+            if edge_number_appear[e] > self.frac_networks:
                 summarized_network.loc[summarized_network.shape[0], :] = [e[0], e[1],
                                                                           edge_weights[e],
                                                                           edge_number_appear[e]]
