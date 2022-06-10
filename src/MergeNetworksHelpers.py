@@ -111,10 +111,6 @@ class NetworkMerger:
                 else:
                     indices_to_keep.append(tup[0])
                     indices_to_keep.append(reverse_edge.index[0])
-                #if tup[3] > reverse_edge.Weight.values.ravel()[0]:
-                #    indices_to_keep.append(tup[0])
-                #else:
-                #    indices_to_keep.append(reverse_edge.index[0])
             else:
                 indices_to_keep.append(tup[0])
             counter += 1
@@ -252,7 +248,7 @@ class NetworkMerger:
         self.print('Saving data to '+self.outdir)
         os.makedirs(self.outdir, exist_ok=True)
         self.edge_df.to_csv(self.outdir+self.prefix+'.network.merged.csv',
-                            index=True)
+                            index=False)
 
     def print(self, input_str):
         if self.verbose:
