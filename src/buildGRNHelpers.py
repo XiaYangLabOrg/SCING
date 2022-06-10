@@ -96,20 +96,17 @@ def _prepare_client(client_or_address):
 
 
 class grnBuilder:
-    def __init__(self, dge_file, gene_file, grn_type, tftg_file,
-                 ngenes, nneighbors, subsample_perc, npcs,
+    def __init__(self, adata, ngenes, nneighbors, subsample_perc, npcs,
                  nsupercells, prefix, outdir, ncore, mem_per_core, verbose):
 
-        self.dge_file = dge_file
-        self.gene_file = gene_file
-        self.grn_type = grn_type
-        self.tftg_file = tftg_file
-
+        self.adata = adata
+        self.dge = pd.DataFrame(adata.X.T)
+        self.dge.index = self.adata.var.index
+        
         self.ngenes = ngenes
         self.nneighbors = nneighbors
         self.subsample_percentage = subsample_perc
         self.npcs = npcs
-        self.nsupercells = nsupercells
 
         self.prefix = prefix
         if outdir[-1] != '/':
