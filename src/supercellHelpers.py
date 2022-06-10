@@ -69,8 +69,6 @@ def get_leiden_based_on_ncell(ad_sub, num_cells, verbose):
             break
 	
         ncells_in_merged = len(np.unique(ad_sub.obs.leiden.to_numpy().ravel()))
-        print(ncells_in_merged)
-        
 
         last_iter = iter_
 
@@ -83,7 +81,7 @@ def get_leiden_based_on_ncell(ad_sub, num_cells, verbose):
     if verbose:
         print('There are ',
               len(np.unique(ad_sub.obs.leiden.to_numpy().ravel())),
-              ' subgroups')
+              ' supercells')
 
     return ad_sub
 
