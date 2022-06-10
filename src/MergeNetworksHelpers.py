@@ -13,18 +13,15 @@ from sklearn.preprocessing import quantile_transform, scale
 
 class McmcMerger:
 
-    def __init__(self, dge_file, genes,
-                 input_dir, file_contains,
-                 npermutation, prefix,
+    def __init__(self, adata, networks, prefix,
                  outdir, ncore, mem_per_core,
                  verbose):
 
-        self.dge_file = dge_file
-        self.genes_file = genes
-        self.input_dir = input_dir
-        self.file_contains = file_contains
-
-        self.npermutation = npermutation
+        self.adata = adata
+        self.dge = pd.DataFrame(adata.X.T)
+        self.dge.index = self.adata.var.index
+        
+        self.networks = networks
 
         self.prefix = prefix
         self.outdir = outdir
@@ -33,42 +30,15 @@ class McmcMerger:
 
         self.verbose = verbose
 
-        if os.path.isfile(self.outdir+'/'+self.prefix+'.network.merged.csv'):
-            quit()
-
-    def read_dge(self):
-        self.print('Reading dge...')
-        if '.npz' in self.dge_file:
-            if self.genes_file is None:
-                print('Genes file required for sparse matrix format')
-                quit()
-
-            self.dge = pd.DataFrame(load_npz(self.dge_file).todense())
-            self.dge.index = pd.read_csv(self.genes_file,
-                                         header=None).to_numpy().ravel()
-
-        elif '.csv' in self.dge_file:
-            self.dge = pd.read_csv(self.dge_file, index_col=0)
-
-        # remove quantile transformation 
-        #self.dge.loc[:,:] = quantile_transform(self.dge.values, axis=1, output_distribution='normal')
 
     def read_network_files(self):
-        files = os.listdir(self.input_dir)
-        if self.input_dir[-1] != '/':
-            self.input_dir += '/'
         
-        files = [f for f in files if self.file_contains in f]
-
-        # read in network files
-        self.print('Reading in network files...')
+        self.print('Preprocessing in network files...')
         all_graphs = []
-        #importance_thresh = 1
+
         top_percent = 0.1
-        for f in files:
+        for temp in self.networks:
             # pandas has a bug with index col
-            temp = pd.read_csv(self.input_dir + f)
-            temp = temp.iloc[:,1:]
             
             netsize = temp.shape[0]
 
