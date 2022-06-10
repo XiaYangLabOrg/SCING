@@ -185,19 +185,20 @@ class grnBuilder:
         self.adata = merge_cells(adata)
 
     def filter_gene_connectivities(self):
+        # transpose to operate on genes
         self.adata = self.adata.copy().T
-        #mat = (self.adata.X > 0).astype(np.float64)
 
         sc.pp.scale(self.adata, max_value=10)
         sc.tl.pca(self.adata, svd_solver='arpack', n_comps=self.npcs)
-        #sc.pp.neighbors(self.adata, n_neighbors=self.nneighbors, n_pcs=100, method='gauss')
         
+        # find nearest neighbors of each gene in PC space
         clf = NearestNeighbors(n_neighbors=self.nneighbors+1,
                               n_jobs=self.ncores).fit(self.adata.obsm['X_pca'])
         dist, neighbor_inds = clf.kneighbors(self.adata.obsm['X_pca'])
         dist = dist[:,1:]
         neighbor_inds = neighbor_inds[:, 1:]
         
+        # limits connctivities between genes
         gene_connectivities = np.zeros((self.adata.obs.shape[0],
                                        self.adata.obs.shape[0]))
         
@@ -208,37 +209,20 @@ class grnBuilder:
         for i in range(neighbor_inds.shape[0]):
             dist_vec = dist[i,:]
             ind_vec = neighbor_inds[i,:]
-            #ind_vec = ind_vec[dist_vec < self.connect_thresh]
 
+            # add neighbors of each gene to possible connectivity
             gene_connectivities.iloc[i, ind_vec] = 1
         
         self.gene_connectivities = gene_connectivities
 
         del self.adata
 
-        if self.tftg_file is not None:
-            tftg = pd.read_csv(self.tftg_file)
-
-            # gets TFTG where both genes are there
-            tftg = tftg.loc[np.sum(np.isin(tftg,self.gene_connectivities.index),axis=1) == 2,:]
-
-            for tup in tftg.itertuples():
-                self.gene_connectivities.loc[tup[1],tup[2]] = 1
-                self.gene_connectivities.loc[tup[2],tup[1]] = 0 
 
     def build_grn(self):
         if self.grn_type == 'intra':
             genes_to_compute = self.gene_connectivities.index.to_numpy().ravel()
             sender_genes = genes_to_compute
             receiver_genes = genes_to_compute
-        elif self.grn_type == 'inter':
-            genes_to_compute = self.gene_connectivities.index.to_numpy().ravel()
-            all_celltypes_in_genes = np.array([i.split("_")[0] for i in genes_to_compute])
-            celltypes = np.unique(all_celltypes_in_genes)
-            sender_cell = celltypes[0]
-            sender_genes = genes_to_compute[[sender_cell in i for i in all_celltypes_in_genes]]
-            receiver_cell = celltypes[1]
-            receiver_genes = genes_to_compute[[receiver_cell in i for i in all_celltypes_in_genes]]
 
         else:
             print('grn_type needs to either be intra or inter')
