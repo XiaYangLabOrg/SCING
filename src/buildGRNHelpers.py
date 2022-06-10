@@ -96,7 +96,7 @@ def _prepare_client(client_or_address):
 
 
 class grnBuilder:
-    def __init__(self, adata, ngenes, nneighbors, npcs,
+    def __init__(self, adata, ngenes, nneighbors, npcs, subsample_perc,
                  prefix, outdir, ncore, mem_per_core, verbose):
 
         self.adata = adata
@@ -106,6 +106,7 @@ class grnBuilder:
         self.ngenes = ngenes
         self.nneighbors = nneighbors
         self.npcs = npcs
+        self.subsample_percentage = subsample_perc
 
         self.prefix = prefix
         if outdir[-1] != '/':
@@ -121,7 +122,8 @@ class grnBuilder:
 
             
     def pipeline(self):
-
+        self.subsample_cells()
+        
         self.print('Filtering genes...')
         self.filter_genes()
 
@@ -137,7 +139,19 @@ class grnBuilder:
 
     def print(self, string_to_print):
         if self.verbose:
-            print(string_to_print)
+            print(string_to_print
+                  
+    def subsample_cells(self):
+        if self.subsample_percentage >= 1:
+            return
+        if self.subsample_percentage <= 0:
+            print('Please put a subsample percentage between 0 and 1')
+            quit()
+
+        self.dge = self.dge.sample(frac=self.subsample_percentage,
+                                   axis=1,
+                                   replace=False)
+
 
     def filter_genes(self):
         adata = sc.AnnData(self.dge.copy()).T
