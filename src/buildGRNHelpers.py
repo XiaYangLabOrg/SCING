@@ -110,6 +110,7 @@ class grnBuilder:
         self.prefix = prefix
         if outdir[-1] != '/':
             outdir = outdir + '/'
+            
         self.outdir = outdir
 
         self.ncores = ncore
@@ -120,9 +121,6 @@ class grnBuilder:
 
             
     def pipeline(self):
-        self.print('Loading data...')
-        self.load_data()
-        self.subsample_cells()
 
         self.print('Filtering genes...')
         self.filter_genes()
@@ -177,6 +175,7 @@ class grnBuilder:
 
         adata = adata[:,np.sum(adata.X,axis=0) != 0]       
 
+        # if ngenes is -1 or more than the total number of genes, no filtering is done
         if ((self.ngenes == -1) | (self.ngenes >= self.dge.shape[0])):
             self.adata = adata
             return
