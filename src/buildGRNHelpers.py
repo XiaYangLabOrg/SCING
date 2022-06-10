@@ -145,8 +145,8 @@ class grnBuilder:
         sc.pp.log1p(adata)
         print(adata)
         adata = adata[:,(~adata.var.duplicated()).to_numpy().ravel()]
-        print((~adata.var.duplicated()).to_numpy().ravel()])
-        print((~adata.var.duplicated()).to_numpy().ravel()].shape)
+        print((~adata.var.duplicated()).to_numpy().ravel())
+        print((~adata.var.duplicated()).to_numpy().ravel().shape)
 
         adata = adata[:,np.sum(adata.X,axis=0) != 0]       
 
