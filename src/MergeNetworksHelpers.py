@@ -11,7 +11,7 @@ from dask.dataframe import from_delayed
 
 from sklearn.preprocessing import quantile_transform, scale
 
-class McmcMerger:
+class NetworkMerger:
 
     def __init__(self, adata, networks, prefix,
                  outdir, ncore, mem_per_core,
@@ -31,7 +31,7 @@ class McmcMerger:
         self.verbose = verbose
 
 
-    def read_network_files(self):
+    def preprocess_network_files(self):
         
         self.print('Preprocessing in network files...')
         all_graphs = []
@@ -256,9 +256,8 @@ class McmcMerger:
             print(input_str)
 
     def pipeline(self):
-        self.read_dge()
 
-        self.read_network_files()
+        self.preprocess_network_files()
         
         self.remove_reversed_edges()
 
