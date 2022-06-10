@@ -120,7 +120,7 @@ class NetworkMerger:
             counter += 1
         indices_to_keep = np.unique(np.array(indices_to_keep))
         self.summarized_network = self.summarized_network.loc[indices_to_keep, :]
-        #quit()
+
     def remove_cycles(self):
         self.print('Removing cycles...')
         g = nx.DiGraph()
@@ -362,33 +362,6 @@ def get_mi_p_chisquare(a, b, c, perm_num):
     conditional_mi_pval = 1 - chi_cdf
 
     return conditional_mi_pval
-
-def get_mi_p_permutation(a, b, c, perm_num):
-    a = quantile_variables(a, 3)
-    b = quantile_variables(b, 3)
-    c = quantile_variables(c, 3)
-
-    conditional_mi = drv.information_mutual_conditional(b, c, a)
-
-    conditional_mi_permuted = []
-    for p in range(perm_num):
-        # only X should be permuted
-        # Y | Z stays the same
-        
-        #np.random.shuffle(a)
-        np.random.shuffle(b)
-        #np.random.shuffle(c)
-
-        conditional_mi_permuted.append(drv.information_mutual_conditional(b, c, a))
-
-            
-    conditional_mi_permuted = np.array(conditional_mi_permuted).ravel()
-
-    conditional_mi_pval = np.sum(conditional_mi_permuted > conditional_mi) / perm_num
-
-    return conditional_mi_pval
-
-
 
 
 def mi_computation(dge_input, t, permutation_num, alpha):
