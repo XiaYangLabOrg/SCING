@@ -139,7 +139,7 @@ class grnBuilder:
 
     def print(self, string_to_print):
         if self.verbose:
-            print(string_to_print
+            print(string_to_print)
                   
     def subsample_cells(self):
         if self.subsample_percentage >= 1:
