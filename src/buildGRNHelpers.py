@@ -144,9 +144,9 @@ class grnBuilder:
         sc.pp.normalize_total(adata, target_sum=1e4)
         sc.pp.log1p(adata)
         print(adata)
-        print((~dge.duplicated()).to_numpy().ravel())
-        print((~dge.duplicated()).to_numpy().ravel().shape)
-        adata = adata[:,(~dge.duplicated()).to_numpy().ravel()]
+        print((~self.dge.duplicated()).to_numpy().ravel())
+        print((~self.dge.duplicated()).to_numpy().ravel().shape)
+        adata = adata[:,(~self.dge.duplicated()).to_numpy().ravel()]
 
 
         adata = adata[:,np.sum(adata.X,axis=0) != 0]       
