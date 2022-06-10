@@ -173,7 +173,7 @@ class grnBuilder:
         sc.pp.normalize_total(adata, target_sum=1e4)
         sc.pp.log1p(adata)
         
-        adata = adata[~adata.var.duplicated()]
+        adata = adata[:,(~adata.var.duplicated()).to_numpy().ravel()]
 
         adata = adata[:,np.sum(adata.X,axis=0) != 0]       
 
