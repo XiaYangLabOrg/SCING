@@ -9,91 +9,6 @@ from sklearn.neighbors import NearestNeighbors
 from dask import delayed
 from dask.dataframe import from_delayed
 
-# class taken from GRNBOOST2
-class EarlyStopMonitor:
-    def __init__(self, window_length=25):
-        """
-        :param window_length: length of the window over the out-of-bag errors.
-        """
-
-        self.window_length = window_length
-
-    def window_boundaries(self, current_round):
-        """
-        :param current_round:
-        :return: the low and high boundaries of the estimators window to consider.
-        """
-
-        lo = max(0, current_round - self.window_length + 1)
-        hi = current_round + 1
-
-        return lo, hi
-
-    def __call__(self, current_round, regressor, _):
-        """
-        Implementation of the GradientBoostingRegressor monitor function API.
-        :param current_round: the current boosting round.
-        :param regressor: the regressor.
-        :param _: ignored.
-        :return: True if the regressor should stop early, else False.
-        """
-
-        if current_round >= self.window_length - 1:
-            lo, hi = self.window_boundaries(current_round)
-            return np.mean(regressor.oob_improvement_[lo: hi]) < 0
-        else:
-            return False
-
-
-# function taken from arboreto/GRNBOOST2
-def _prepare_client(client_or_address):
-    """
-    :param client_or_address: one of:
-           * None
-           * verbatim: 'local'
-           * string address
-           * a Client instance
-    :return: a tuple: (Client instance, shutdown callback function).
-    :raises: ValueError if no valid client input was provided.
-    """
-
-    if client_or_address is None or str(client_or_address).lower() == 'local':
-        local_cluster = LocalCluster(diagnostics_port=None)
-        client = Client(local_cluster)
-
-        def close_client_and_local_cluster(verbose=False):
-            if verbose:
-                print('shutting down client and local cluster')
-
-            client.close()
-            local_cluster.close()
-
-        return client, close_client_and_local_cluster
-
-    elif isinstance(client_or_address, str) and client_or_address.lower() != 'local':
-        client = Client(client_or_address)
-
-        def close_client(verbose=False):
-            if verbose:
-                print('shutting down client')
-
-            client.close()
-
-        return client, close_client
-
-    elif isinstance(client_or_address, Client):
-
-        def close_dummy(verbose=False):
-            if verbose:
-                print('not shutting down client, client was created externally')
-
-            return None
-
-        return client_or_address, close_dummy
-
-    else:
-        raise ValueError("Invalid client specified {}".format(str(client_or_address)))
-
 
 class grnBuilder:
     def __init__(self, adata, ngenes, nneighbors, npcs, subsample_perc,
@@ -282,7 +197,90 @@ class grnBuilder:
         self.print('Saving file in '+file_name)
         self.edges.to_csv(file_name)
 
+# class taken from GRNBOOST2
+class EarlyStopMonitor:
+    def __init__(self, window_length=25):
+        """
+        :param window_length: length of the window over the out-of-bag errors.
+        """
 
+        self.window_length = window_length
+
+    def window_boundaries(self, current_round):
+        """
+        :param current_round:
+        :return: the low and high boundaries of the estimators window to consider.
+        """
+
+        lo = max(0, current_round - self.window_length + 1)
+        hi = current_round + 1
+
+        return lo, hi
+
+    def __call__(self, current_round, regressor, _):
+        """
+        Implementation of the GradientBoostingRegressor monitor function API.
+        :param current_round: the current boosting round.
+        :param regressor: the regressor.
+        :param _: ignored.
+        :return: True if the regressor should stop early, else False.
+        """
+
+        if current_round >= self.window_length - 1:
+            lo, hi = self.window_boundaries(current_round)
+            return np.mean(regressor.oob_improvement_[lo: hi]) < 0
+        else:
+            return False
+
+
+# function taken from arboreto/GRNBOOST2
+def _prepare_client(client_or_address):
+    """
+    :param client_or_address: one of:
+           * None
+           * verbatim: 'local'
+           * string address
+           * a Client instance
+    :return: a tuple: (Client instance, shutdown callback function).
+    :raises: ValueError if no valid client input was provided.
+    """
+
+    if client_or_address is None or str(client_or_address).lower() == 'local':
+        local_cluster = LocalCluster(diagnostics_port=None)
+        client = Client(local_cluster)
+
+        def close_client_and_local_cluster(verbose=False):
+            if verbose:
+                print('shutting down client and local cluster')
+
+            client.close()
+            local_cluster.close()
+
+        return client, close_client_and_local_cluster
+
+    elif isinstance(client_or_address, str) and client_or_address.lower() != 'local':
+        client = Client(client_or_address)
+
+        def close_client(verbose=False):
+            if verbose:
+                print('shutting down client')
+
+            client.close()
+
+        return client, close_client
+
+    elif isinstance(client_or_address, Client):
+
+        def close_dummy(verbose=False):
+            if verbose:
+                print('not shutting down client, client was created externally')
+
+            return None
+
+        return client_or_address, close_dummy
+
+    else:
+        raise ValueError("Invalid client specified {}".format(str(client_or_address)))
 
 def grad_boost_reg(temp_dge_input, target_gene, input_genes, early_stop_window_length):
     gene_vec_input = temp_dge_input.loc[target_gene, :]
@@ -304,6 +302,3 @@ def grad_boost_reg(temp_dge_input, target_gene, input_genes, early_stop_window_l
     reg_rf.importance = reg_rf.importance * len(input_genes)
 
     return reg_rf
-
-
-
