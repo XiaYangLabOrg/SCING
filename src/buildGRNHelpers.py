@@ -143,12 +143,11 @@ class grnBuilder:
         adata = sc.AnnData(self.dge.copy()).T
         sc.pp.normalize_total(adata, target_sum=1e4)
         sc.pp.log1p(adata)
-        print(adata)
-        print((~self.dge.duplicated()).to_numpy().ravel())
-        print((~self.dge.duplicated()).to_numpy().ravel().shape)
+        
+        # remove duplicates
         adata = adata[:,(~self.dge.duplicated()).to_numpy().ravel()]
 
-
+        # remove genes without expression
         adata = adata[:,np.sum(adata.X,axis=0) != 0]       
 
         # if ngenes is -1 or more than the total number of genes, no filtering is done
