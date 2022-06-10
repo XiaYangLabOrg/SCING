@@ -127,9 +127,6 @@ class grnBuilder:
         self.print('Filtering genes...')
         self.filter_genes()
 
-        if self.nsupercells is not None:
-            self.merge_cells()
-
         self.print('Filtering gene connectivities...')
         self.filter_gene_connectivities()
         self.print('Building GRN...')
@@ -177,26 +174,6 @@ class grnBuilder:
         adata = adata[:, adata.var.highly_variable]
         self.adata = adata
 
-    def merge_cells(self):
-        adata = get_leiden_based_on_ncell(self.adata,
-                                          resolutions=np.arange(0.001, 1000, 0.1),
-                                          num_cells=self.nsupercells,
-                                          verbose=self.verbose)
-
-        new_adata = sc.AnnData(self.dge).T
-        new_adata.obs['leiden'] = adata.obs.leiden
-        
-        # using a second merged dataset
-        # this is for the average counts
-        # the other is based on normalized results
-        new_merged_adata = merge_cells(new_adata)
-        new_dge = pd.DataFrame(new_merged_adata.X).T
-
-        new_dge.index = new_merged_adata.var.index
-        new_dge.columns = new_merged_adata.obs.index
-        self.dge = new_dge
-        
-        self.adata = merge_cells(adata)
 
     def filter_gene_connectivities(self):
         # transpose to operate on genes
@@ -233,14 +210,10 @@ class grnBuilder:
 
 
     def build_grn(self):
-        if self.grn_type == 'intra':
-            genes_to_compute = self.gene_connectivities.index.to_numpy().ravel()
-            sender_genes = genes_to_compute
-            receiver_genes = genes_to_compute
+        genes_to_compute = self.gene_connectivities.index.to_numpy().ravel()
+        sender_genes = genes_to_compute
+        receiver_genes = genes_to_compute
 
-        else:
-            print('grn_type needs to either be intra or inter')
-            quit()
 
         self.sender_genes = sender_genes
         self.receiver_genes = receiver_genes
@@ -252,6 +225,7 @@ class grnBuilder:
             threads_per_core = 1
 
             self.print('building local cluster')
+            # dask set up
             loc_cluster = LocalCluster(n_workers=self.ncores,
                                        threads_per_worker=threads_per_core,
                                        memory_limit=self.memory)
@@ -266,16 +240,19 @@ class grnBuilder:
 
             delayed_link_df = []
 
+            # early stopping for GBR
             early_stop_window_length = 25
             counter = 0
 
             self.print('Building dask graph...')
             for g1 in self.receiver_genes:
+                # genes to add as potential parents are limited by the connectivity matrix
                 connectivity_vec = self.gene_connectivities.loc[g1, :]
                 connectivity_vec = connectivity_vec[self.sender_genes]
                 connectivity_vec = connectivity_vec[connectivity_vec > 0]
 
                 if len(connectivity_vec) > 0:
+                    # gradient boosting regressor
                     delayed_reg = delayed(grad_boost_reg, pure=True)(delayed_matrix, g1,
                                                                      connectivity_vec.index,
                                                                      early_stop_window_length)
@@ -284,6 +261,7 @@ class grnBuilder:
 
                 counter += 1
             n_parts = len(client.ncores()) * threads_per_core
+            # merge the edges together
             edges_df = from_delayed(delayed_link_df)
             all_links_df = edges_df.repartition(npartitions=n_parts)
 
@@ -328,63 +306,4 @@ def grad_boost_reg(temp_dge_input, target_gene, input_genes, early_stop_window_l
     return reg_rf
 
 
-def merge_cells(ads, variable_to_merge='leiden'):
-    """
-    :param ads: adata of cells to be merged.
-    :param variable_to_merge: observation variable to merge data by (default: leiden)
-    :return: merged_data: adata of merged cells
-    """
 
-    clust_assignment = ads.obs.loc[:, variable_to_merge].to_numpy()
-    clusts = np.unique(clust_assignment)
-    ncells = len(clusts)
-    new_mat = np.zeros((ncells, ads.shape[1]))
-    for i, c in enumerate(clusts):
-        locs = np.where(clust_assignment == c)[0]
-        new_mat[i, :] = np.mean(ads.X[locs, :], axis=0)
-    merged_cells = sc.AnnData(new_mat, var=ads.var)
-    return merged_cells
-
-
-def get_leiden_based_on_ncell(ad_sub, resolutions, num_cells, verbose):
-    """
-    :param ad_sub: adata of single celltype
-    :param resolutions: np vector of resolutions to test
-    :param num_cells: average number of cells per cluster
-    :param verbose: Whether or not to print along the way
-    :return: ad_sub: adata of single celltype with clusters in leiden
-    """
-    saved_log_mat = ad_sub.X.copy()
-    sc.pp.scale(ad_sub)
-    sc.tl.pca(ad_sub, svd_solver='arpack', n_comps=min(30, ad_sub.shape[0] - 1))
-    sc.pp.neighbors(ad_sub, n_neighbors=10, n_pcs=min(30, ad_sub.shape[0] - 1))
-    ad_sub.X = saved_log_mat
-
-    vec_length = len(resolutions)
-    iter_ = int(vec_length / 2)
-    last_iter = 0
-    while True:
-        vec_length = abs(iter_ - last_iter)
-        sc.tl.leiden(ad_sub, resolution=resolutions[iter_], n_iterations=100)
-
-        # get number of cells per group on average
-        num_groups = len(np.unique(ad_sub.obs.leiden))
-
-
-        if abs(iter_ - last_iter) <= 1:
-            break
-
-        last_iter = iter_
-        if num_groups <= num_cells:
-            iter_ += int(vec_length / 2)
-        elif num_groups > num_cells:
-            iter_ -= int(vec_length / 2)
-
-    sc.tl.leiden(ad_sub, resolution=resolutions[iter_])
-
-    if verbose:
-        print('There are ',
-              len(np.unique(ad_sub.obs.leiden.to_numpy().ravel())),
-              ' subgroups')
-
-    return ad_sub
