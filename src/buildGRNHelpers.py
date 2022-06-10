@@ -172,6 +172,8 @@ class grnBuilder:
         adata = sc.AnnData(self.dge.copy()).T
         sc.pp.normalize_total(adata, target_sum=1e4)
         sc.pp.log1p(adata)
+        
+        adata = adata[~adata.var.duplicated()]
 
         adata = adata[:,np.sum(adata.X,axis=0) != 0]       
 
