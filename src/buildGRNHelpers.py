@@ -97,8 +97,7 @@ def _prepare_client(client_or_address):
 
 class grnBuilder:
     def __init__(self, adata, ngenes, nneighbors, npcs,
-                 prefix, outdir, ncore, mem_per_core, verbose,
-                 overwrite):
+                 prefix, outdir, ncore, mem_per_core, verbose):
 
         self.adata = adata
         self.dge = pd.DataFrame(adata.X.T)
@@ -106,7 +105,6 @@ class grnBuilder:
         
         self.ngenes = ngenes
         self.nneighbors = nneighbors
-        self.subsample_percentage = subsample_perc
         self.npcs = npcs
 
         self.prefix = prefix
@@ -119,9 +117,7 @@ class grnBuilder:
 
         self.verbose = verbose
         file_name = self.outdir + self.prefix + '.csv.gz'
-        if os.path.isfile(file_name):
-            if not overwrite:
-                quit()
+
             
     def pipeline(self):
         self.print('Loading data...')
