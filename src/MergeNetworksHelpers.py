@@ -9,12 +9,10 @@ from distributed import LocalCluster, Client
 from dask import delayed
 from dask.dataframe import from_delayed
 
-from sklearn.preprocessing import quantile_transform, scale
-
 class NetworkMerger:
 
-    def __init__(self, adata, networks, minimum_edge_appearance_threshold,
-                 prefix,
+    def __init__(self, adata, networks,
+                 minimum_edge_appearance_threshold,prefix,
                  outdir, ncore, mem_per_core,
                  verbose):
 
@@ -35,6 +33,10 @@ class NetworkMerger:
 
 
     def preprocess_network_files(self):
+        """
+        Takes the top 10 percent of networks, and top 3 parents of each node
+        Finds edges in at least n% of networks.
+        """
         
         self.print('Preprocessing in network files...')
         all_graphs = []
@@ -87,6 +89,9 @@ class NetworkMerger:
         self.edge_weights = edge_weights
 
     def remove_reversed_edges(self):
+        """
+        Removes the reversed edge if the weight of the stronger edge is >25% over the weaker
+        """
         self.print('Removing bidirectional edges...')
         indices_to_keep = []
         self.summarized_network.sort_values('Weight', inplace=True, ascending=False)
@@ -118,6 +123,9 @@ class NetworkMerger:
         self.summarized_network = self.summarized_network.loc[indices_to_keep, :]
 
     def remove_cycles(self):
+        """
+        Removes the weakest edge in each cycle
+        """
         self.print('Removing cycles...')
         g = nx.DiGraph()
         for tup in self.summarized_network.itertuples():
@@ -162,6 +170,9 @@ class NetworkMerger:
         self.edge_df = pd.DataFrame({"source": from_, "target": to_, "importance" : weight_})
 
     def get_triads(self):
+        """
+        Finds triads in which 3 genes have a triangle structure
+        """
         self.print('Getting triads to remove redundant edges...')
         source_genes = np.unique(self.edge_df.source)
 
@@ -190,6 +201,10 @@ class NetworkMerger:
         self.triads_to_evaluate = triads_to_evaluate
 
     def remove_redundant_edges(self):
+        """
+        Removes edges in triads if the conditional mutual information is 
+        conditionally independent with a third node
+        """
         computed_edges_to_remove = None
         self.print('Removing redundant edges...')
         try:
