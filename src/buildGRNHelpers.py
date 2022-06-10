@@ -139,41 +139,14 @@ class grnBuilder:
         if self.verbose:
             print(string_to_print)
 
-    def load_data(self):
-        if '.npz' in self.dge_file:
-            if self.gene_file is None:
-                print('Gene file is needed for sparse matrices')
-                quit()
-            else:
-                self.dge = load_npz(self.dge_file).todense()
-                self.genes_vec = pd.read_csv(self.gene_file, header=None).to_numpy().ravel()
-                self.dge = pd.DataFrame(self.dge)
-                self.dge.index = self.genes_vec
-                self.dge = self.dge.loc[~self.dge.index.duplicated(), :]
-
-        elif 'csv' in self.dge_file:
-            self.dge = pd.read_csv(self.dge_file, index_col=0)
-            self.dge = self.dge.loc[~self.dge.index.duplicated(), :]
-        else:
-            print('Only sparse matrices (.npz) and csv format are currently accepted.')
-
-    def subsample_cells(self):
-        if self.subsample_percentage >= 1:
-            return
-        if self.subsample_percentage <= 0:
-            print('Please put a subsample percentage between 0 and 1')
-            quit()
-
-        self.dge = self.dge.sample(frac=self.subsample_percentage,
-                                   axis=1,
-                                   replace=False)
-
     def filter_genes(self):
         adata = sc.AnnData(self.dge.copy()).T
         sc.pp.normalize_total(adata, target_sum=1e4)
         sc.pp.log1p(adata)
-        
+        print(adata)
         adata = adata[:,(~adata.var.duplicated()).to_numpy().ravel()]
+        print((~adata.var.duplicated()).to_numpy().ravel()])
+        print((~adata.var.duplicated()).to_numpy().ravel()].shape)
 
         adata = adata[:,np.sum(adata.X,axis=0) != 0]       
 
