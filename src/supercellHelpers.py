@@ -61,6 +61,8 @@ def get_leiden_based_on_ncell(ad_sub, num_cells, verbose):
     vec_length = len(resolutions)
     iter_ = int(vec_length / 2)
     last_iter = 0
+
+    # binary search to find optimal resolution
     while True:
         vec_length = abs(iter_ - last_iter)
         sc.tl.leiden(ad_sub, resolution=resolutions[iter_])
@@ -76,6 +78,8 @@ def get_leiden_based_on_ncell(ad_sub, num_cells, verbose):
             iter_ += int(vec_length / 2)
         elif ncells_in_merged >= num_cells:
             iter_ -= int(vec_length / 2)
+	
+    # final leiden clustering
     sc.tl.leiden(ad_sub, resolution=resolutions[iter_])
 
     if verbose:
