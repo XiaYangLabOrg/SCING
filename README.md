@@ -6,4 +6,5 @@ SCING: Single Cell INtegrative Gene regulatory network inference
   ``` 
   $conda create -n scing --file install/scing.environment.yml  
   $pip install pyitlib  
+  $conda activate scing
   ```
