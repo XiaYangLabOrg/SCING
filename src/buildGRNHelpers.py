@@ -295,10 +295,11 @@ def grad_boost_reg(temp_dge_input, target_gene, input_genes, early_stop_window_l
                                                       gene_vec_input,
                                                       monitor=EarlyStopMonitor(early_stop_window_length))
 
-    reg_rf = pd.DataFrame([[i[0], i[1]] for i in sorted(zip(reg_rf.feature_importances_, input_genes))][::-1])
-    reg_rf.columns = ['importance', 'source']
-    reg_rf.loc[:, 'target'] = target_gene
-    reg_rf = reg_rf[reg_rf.importance != 0]
-    reg_rf.loc[:,'importance'] = reg_rf.importance * len(input_genes)
+    reg_rf_df = pd.DataFrame([[i[0], i[1]] for i in sorted(zip(reg_rf.feature_importances_, input_genes))][::-1])
+    #print(reg_rf_df)
+    reg_rf_df.columns = ['importance', 'source']
+    reg_rf_df.loc[:, 'target'] = target_gene
+    reg_rf_df = reg_rf_df[reg_rf_df.importance != 0].copy()
+    reg_rf_df.loc[:,'importance'] = reg_rf_df.loc[:,'importance'].to_numpy().ravel()*len(input_genes)
 
-    return reg_rf
+    return reg_rf_df
