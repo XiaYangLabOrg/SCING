@@ -122,7 +122,7 @@ def get_merged_dataset(adata_all, obs):
 
     return all_merged
 
-def pipeline(adata, ngenes=2000, npcs=20,ncell=500,verbose=True):
+def supercell_pipeline(adata, ngenes=2000, npcs=20,ncell=500,verbose=True):
     saved_counts = adata.X.copy()
     
     # Run PCA and find nearest neighbors
