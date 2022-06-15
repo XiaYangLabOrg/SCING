@@ -8,3 +8,8 @@ SCING: Single Cell INtegrative Gene regulatory network inference
   $conda activate scing
   $pip install pyitlib  
   ```
+  
+  If you want to use the AUCell from SCENIC for graph based dimensionality reduction you must install pyscenic  
+  ```
+  $pip install pyscenic
+  ```
