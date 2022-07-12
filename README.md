@@ -2,6 +2,11 @@
 SCING: Single Cell INtegrative Gene regulatory network inference
   
   ---
+  ### Downloading the repo  
+  ``` 
+  $git clone https://github.com/XiaYangLabOrg/SCING.git
+  ```  
+  
   ### Setting up the environment:
   ``` 
   $conda create -n scing --file install/scing.environment.yml  
