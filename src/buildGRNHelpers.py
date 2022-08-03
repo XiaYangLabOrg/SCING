@@ -136,60 +136,77 @@ class grnBuilder:
         self._build_grn()
 
     def _build_grn(self):
-        try:
-            threads_per_core = 1
+        if self.ncores > 1:
+            try:
+                threads_per_core = 1
 
-            self.print('building local cluster')
-            # dask set up
-            loc_cluster = LocalCluster(n_workers=self.ncores,
-                                       threads_per_worker=threads_per_core,
-                                       memory_limit=self.memory)
 
-            client = Client(loc_cluster)
+                self.print('building local cluster')
+                # dask set up
+                loc_cluster = LocalCluster(n_workers=self.ncores,
+                                           threads_per_worker=threads_per_core,
+                                           memory_limit=self.memory)
 
-            client, shutdown_callback = _prepare_client(client)
+                client = Client(loc_cluster)
 
-            self.print('Loading data into memory...')
+                client, shutdown_callback = _prepare_client(client)
 
-            delayed_matrix = client.scatter(self.dge, broadcast=True)
+                self.print('Loading data into memory...')
 
-            delayed_link_df = []
+                delayed_matrix = client.scatter(self.dge, broadcast=True)
 
-            # early stopping for GBR
-            early_stop_window_length = 25
-            counter = 0
+                delayed_link_df = []
 
-            self.print('Building dask graph...')
+                # early stopping for GBR
+                early_stop_window_length = 25
+                counter = 0
+
+                self.print('Building dask graph...')
+                for g1 in self.receiver_genes:
+                    # genes to add as potential parents are limited by the connectivity matrix
+                    connectivity_vec = self.gene_connectivities.loc[g1, :]
+                    connectivity_vec = connectivity_vec[self.sender_genes]
+                    connectivity_vec = connectivity_vec[connectivity_vec > 0]
+
+                    if len(connectivity_vec) > 0:
+                        # gradient boosting regressor
+                        delayed_reg = delayed(grad_boost_reg, pure=True)(delayed_matrix, g1,
+                                                                         connectivity_vec.index,
+                                                                         early_stop_window_length)
+
+                        delayed_link_df.append(delayed_reg)
+
+                    counter += 1
+                n_parts = len(client.ncores()) * threads_per_core
+                # merge the edges together
+                edges_df = from_delayed(delayed_link_df)
+                all_links_df = edges_df.repartition(npartitions=n_parts)
+
+                self.print('Computing dask graph...')
+
+                computed_edges = client.compute(all_links_df, sync=True).sort_values(by='importance', ascending=False)
+
+                self.edges = computed_edges
+
+            finally:
+                self.print('Closing client...')
+                client.close()
+                loc_cluster.close()
+        else:
+            edges_df = []
             for g1 in self.receiver_genes:
-                # genes to add as potential parents are limited by the connectivity matrix
                 connectivity_vec = self.gene_connectivities.loc[g1, :]
                 connectivity_vec = connectivity_vec[self.sender_genes]
                 connectivity_vec = connectivity_vec[connectivity_vec > 0]
-
                 if len(connectivity_vec) > 0:
                     # gradient boosting regressor
-                    delayed_reg = delayed(grad_boost_reg, pure=True)(delayed_matrix, g1,
+                    delayed_reg = delayed(grad_boost_reg, pure=True)(self.dge, g1,
                                                                      connectivity_vec.index,
                                                                      early_stop_window_length)
 
-                    delayed_link_df.append(delayed_reg)
-
-                counter += 1
-            n_parts = len(client.ncores()) * threads_per_core
-            # merge the edges together
-            edges_df = from_delayed(delayed_link_df)
-            all_links_df = edges_df.repartition(npartitions=n_parts)
-
-            self.print('Computing dask graph...')
-
-            computed_edges = client.compute(all_links_df, sync=True).sort_values(by='importance', ascending=False)
-
-            self.edges = computed_edges
-
-        finally:
-            self.print('Closing client...')
-            client.close()
-            loc_cluster.close()
+                    edges_df.append(edges_df)
+            self.edges = pd.concatenate(edges_df).sort_values(by='importance', ascending=False)
+                
 
     def save_edges(self):
         os.makedirs(self.outdir, exist_ok=True)
