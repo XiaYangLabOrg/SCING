@@ -201,11 +201,11 @@ class grnBuilder:
                 connectivity_vec = connectivity_vec[connectivity_vec > 0]
                 if len(connectivity_vec) > 0:
                     # gradient boosting regressor
-                    delayed_reg = delayed(grad_boost_reg, pure=True)(self.dge, g1,
-                                                                     connectivity_vec.index,
-                                                                     early_stop_window_length)
+                    delayed_reg = grad_boost_reg(self.dge, g1,
+                                                 connectivity_vec.index,
+                                                 early_stop_window_length)
 
-                    edges_df.append(edges_df)
+                    edges_df.append(delayed_reg)
             self.edges = pd.concat(edges_df).sort_values(by='importance', ascending=False)
                 
 
