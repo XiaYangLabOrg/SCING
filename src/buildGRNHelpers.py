@@ -206,7 +206,7 @@ class grnBuilder:
                                                                      early_stop_window_length)
 
                     edges_df.append(edges_df)
-            self.edges = pd.concatenate(edges_df).sort_values(by='importance', ascending=False)
+            self.edges = pd.concat(edges_df).sort_values(by='importance', ascending=False)
                 
 
     def save_edges(self):
