@@ -136,6 +136,8 @@ class grnBuilder:
         self._build_grn()
 
     def _build_grn(self):
+        # early stopping for GBR
+        early_stop_window_length = 25
         if self.ncores > 1:
             try:
                 threads_per_core = 1
@@ -157,8 +159,7 @@ class grnBuilder:
 
                 delayed_link_df = []
 
-                # early stopping for GBR
-                early_stop_window_length = 25
+                
                 counter = 0
 
                 self.print('Building dask graph...')
