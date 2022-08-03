@@ -30,7 +30,7 @@ class grnBuilder:
         self.outdir = outdir
 
         self.ncores = ncore
-        self.memory = mem_per_core
+        self.memory = mem_per_core * ncore
 
         self.verbose = verbose
         file_name = self.outdir + self.prefix + '.csv.gz'
