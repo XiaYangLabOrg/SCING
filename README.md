@@ -23,3 +23,12 @@ SCING overview, benchmarking, and application. SCING overview (a). First, we sel
   ```
   $pip install pyscenic
   ```
+  
+  ### Running SCING  
+  #### Tutorials can be found in the tutorials directory  
+  BuildNetwork.ipynb: Build Supercells, build many GRNs based on subsamples of the data, merge many GRNs to a final GRN plus prune edges.  
+  *Note: To properly use the parallelizability of SCING with a cluster. These steps can be broken up into three separate scripts. First, build supercells and save the file. Second, for 100 networks (in parallel) read in the supercell and build GRNs. Lastly, read in the supercells, and the 100 networks, and merge the networks.*  
+    
+  ModuleBasedDimensionalityReduction.ipynb: Take the merged network, and divide it into subnetworks with the leiden graph partitioning algorithm, finally run the AUCell approach to get module scores for each cell in the dataset. These can be used for clustering or phenotypic association.  
+    
+  PathwayEnrichmentOfModule.ipynb: Run pathways enrichment analysis on the genes in each subnetowrk determined from the leiden algorithm. This enables biological annotation of modules.  
