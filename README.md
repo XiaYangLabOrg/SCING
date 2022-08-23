@@ -10,6 +10,7 @@ SCING overview, benchmarking, and application. SCING overview (a). First, we sel
   ### Downloading the repo  
   ``` 
   $git clone https://github.com/XiaYangLabOrg/SCING.git
+  $cd SCING
   ```  
   
   ### Setting up the environment:
