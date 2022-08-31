@@ -24,6 +24,11 @@ SCING overview, benchmarking, and application. SCING overview (a). First, we sel
   ```
   $pip install pyscenic
   ```
+  If you want to perform pathway enrichment analysis with enrichr you must install R and enrichr. 
+  ```  
+  $conda env create -n enrichr --file install/pathway.environment.yml
+  $conda activate enrichr
+  ```
   
   ### Running SCING  
   #### Tutorials can be found in the tutorials directory  
