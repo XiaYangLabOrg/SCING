@@ -211,7 +211,7 @@ class grnBuilder:
 
     def save_edges(self):
         os.makedirs(self.outdir, exist_ok=True)
-        file_name = self.outdir + self.prefix + '.' + self.grn_type + '.csv.gz'
+        file_name = self.outdir + self.prefix + '.csv.gz'
         self.print('Saving file in '+file_name)
         self.edges.to_csv(file_name)
 
