@@ -40,12 +40,12 @@ dependencies:
   - cryptography=37.0.4=py39hd97740a_0
   - cycler=0.11.0=pyhd8ed1ab_0
   - cytoolz=0.12.0=py39hb9d737c_0
-  - dask=2022.7.0=pyhd8ed1ab_0
-  - dask-core=2022.7.0=pyhd8ed1ab_0
+  - dask=2022.10.1=pyhd8ed1ab_0
+  - dask-core=2022.10.1=pyhd8ed1ab_0
   - debugpy=1.6.0=py39h5a03fae_0
   - decorator=5.1.1=pyhd8ed1ab_0
   - defusedxml=0.7.1=pyhd8ed1ab_0
-  - distributed=2022.7.0=pyhd8ed1ab_0
+  - distributed=2022.10.1=pyhd8ed1ab_0
   - docutils=0.16=py39hf3d152e_3
   - entrypoints=0.4=pyhd8ed1ab_0
   - executing=0.8.3=pyhd8ed1ab_0
