@@ -4,6 +4,7 @@ from pyitlib import discrete_random_variable as drv
 import networkx as nx
 import os
 from scipy.sparse import load_npz
+from scipy.stats import chi2
 
 from distributed import LocalCluster, Client
 from dask import delayed
@@ -224,7 +225,7 @@ class NetworkMerger:
             self.print('Building dask graph...')
             for t in self.triads_to_evaluate:
                 delayed_edge = delayed(mi_computation, pure=True)(
-                    delayed_matrix, t, self.npermutation, alpha
+                    delayed_matrix, t, alpha
                 )
 
                 edges_to_remove.append(delayed_edge)
@@ -349,7 +350,7 @@ def quantile_variables(x, nquantiles):
     return quant_data
 
 
-def get_mi_p_chisquare(a, b, c, perm_num):
+def get_mi_p_chisquare(a, b, c):
     """
         From https://jmlr.csail.mit.edu/papers/volume22/19-600/19-600.pdf
         Kubkowski et al.
@@ -375,16 +376,16 @@ def get_mi_p_chisquare(a, b, c, perm_num):
     return conditional_mi_pval
 
 
-def mi_computation(dge_input, t, permutation_num, alpha):
+def mi_computation(dge_input, t, alpha):
     x = dge_input.loc[t[0][0], :].values.ravel()
     y = dge_input.loc[t[0][1], :].values.ravel()
     z = dge_input.loc[t[1][1], :].values.ravel()
 
-    conditional_mi_pval_y_z_given_x = get_mi_p_chisquare(x.copy(), y.copy(), z.copy(), permutation_num)
+    conditional_mi_pval_y_z_given_x = get_mi_p_chisquare(x.copy(), y.copy(), z.copy())
     if conditional_mi_pval_y_z_given_x > alpha:
         edge_to_remove = [t[2][0], t[2][1]]
     else:
-        conditional_mi_pval_x_z_given_b = get_mi_p_chisquare(x.copy(), z.copy(), y.copy(), permutation_num)
+        conditional_mi_pval_x_z_given_b = get_mi_p_chisquare(x.copy(), z.copy(), y.copy())
         if conditional_mi_pval_x_z_given_b > alpha:
             edge_to_remove = [t[1][0], t[1][1]]
         else:
