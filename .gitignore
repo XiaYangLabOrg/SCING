@@ -1,0 +1,4 @@
+*__pycache__/
+src/SCING.egg-info/
+*.ipynb_checkpoints/
+*dask-worker-space/
