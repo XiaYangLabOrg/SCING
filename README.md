@@ -11,26 +11,25 @@ SCING overview, benchmarking, and application. SCING overview (a). First, we sel
   ---
   ### Downloading the repo  
   ``` 
-  git clone https://github.com/XiaYangLabOrg/SCING.git
-  cd SCING
+  $git clone https://github.com/XiaYangLabOrg/SCING.git
+  $cd SCING
   ```  
   
   ### Setting up the environment:
   ``` 
-  conda env create -n scing --file install/scing.environment.yml  
-  conda activate scing
-  pip install pyitlib  
-  pip install -e .
+  $conda env create -n scing --file install/scing.environment.yml  
+  $conda activate scing
+  $pip install pyitlib  
   ```
   
   If you want to use the AUCell from SCENIC for graph based dimensionality reduction you must install pyscenic  
   ```
-  pip install pyscenic
+  $pip install pyscenic
   ```
   If you want to perform pathway enrichment analysis with enrichr you must install R and enrichr. 
   ```  
-  conda env create -n enrichr --file install/pathway.environment.yml
-  conda activate enrichr
+  $conda env create -n enrichr --file install/pathway.environment.yml
+  $conda activate enrichr
   ```
   
   ### Running SCING  
