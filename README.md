@@ -13,6 +13,8 @@ SCING overview, benchmarking, and application. SCING overview (a). First, we sel
   ``` 
   git clone https://github.com/XiaYangLabOrg/SCING.git
   cd SCING
+  # checkout a new local branch that tracks the remote branch scing1.0
+  git checkout --track origin/scing1.0
   ```  
   
   ### Setting up the environment:
