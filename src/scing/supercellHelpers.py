@@ -147,7 +147,7 @@ def remove_empty_genes(adata, verbose=True):
 def pseudobulk_pipeline(adata:ad.AnnData, stratify_by, save_by=None, 
                         n_hvgs=2000, n_pcs=40, n_neighbors=10, 
                         pb_n_neighbors=10, pb_max_overlap=5, n_pb_pergroup=500,
-                        out_dir="./", pref="", random_state=0, verbose=True):
+                        out_dir="./", pref=None, random_state=0, verbose=True):
     """
     Pseudobulk pipeline
 
@@ -162,7 +162,7 @@ def pseudobulk_pipeline(adata:ad.AnnData, stratify_by, save_by=None,
         pb_max_overlap: max number of overlapping cells between two pseudobulk cells
         n_pb_pergroup: number of pseudobulk cells per group
         outdir: Output directory
-        pref: Output file prefix (default "")
+        pref: Output file prefix (default None)
         random_state: random state for setting seed
         verbose: toggle verbosity
 
@@ -177,7 +177,7 @@ def pseudobulk_pipeline(adata:ad.AnnData, stratify_by, save_by=None,
     adata_pb_list = []
     for colnames,df in adata_proc.obs.groupby(stratify_by):
         if verbose:
-            print([i for i in colnames])
+            print(colnames)
         adata_ct = adata_proc[df.index]
         cell_neighbors = get_knn_adj_list(adata_ct, n_neighbors=pb_n_neighbors)
         if verbose:
@@ -195,19 +195,30 @@ def pseudobulk_pipeline(adata:ad.AnnData, stratify_by, save_by=None,
         adata_pb_list.append(adata_pb)
     
     adata_pb_merged = ad.concat(adata_pb_list)
-    if verbose:
-        print(f"saving pseudobulk adata by {', '.join(save_by)}")
+    
     if save_by:
+        if verbose:
+            print(f"saving pseudobulk adata by {', '.join(save_by)}")
         for colnames, df in adata_pb_merged.obs.groupby(save_by):
             adata_sub = adata_pb_merged[df.index].copy()
             remove_empty_genes(adata_sub)
-            if isinstance(colnames, str):
-                adata_sub.write_h5ad(f"{out_dir}/{pref}_{colnames}_pb_h5ad")
+            if pref and isinstance(colnames, str):
+                outfile = f"{pref}_{colnames}_pb.h5ad"
+            elif not pref and isinstance(colnames, str):
+                outfile = f"{colnames}_pb.h5ad"
+            elif pref and not isinstance(colnames, str):
+                outfile = f"{pref}_{'_'.join(colnames)}_pb.h5ad"
             else:
-                adata_sub.write_h5ad(f"{out_dir}/{pref}_{'_'.join(colnames)}_pb_h5ad")
-            
+                outfile = f"{'_'.join(colnames)}_pb.h5ad"
+            adata_sub.write_h5ad(f"{out_dir}/{outfile}")            
     else:
-        adata_pb_merged.write_h5ad(f"{out_dir}/{pref}_pb_h5ad")
+        if verbose:
+            print("saving pseudobulk adata")
+        if pref:
+            outfile = f"{pref}_pb.h5ad"
+        else:
+            outfile = "pb.h5ad"
+        adata_pb_merged.write_h5ad(f"{out_dir}/{outfile}")
 
     return
 
