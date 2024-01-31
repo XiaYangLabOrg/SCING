@@ -201,7 +201,11 @@ def pseudobulk_pipeline(adata:ad.AnnData, stratify_by, save_by=None,
         for colnames, df in adata_pb_merged.obs.groupby(save_by):
             adata_sub = adata_pb_merged[df.index].copy()
             remove_empty_genes(adata_sub)
-            adata_sub.write_h5ad(f"{out_dir}/{pref}_{'_'.join(colnames)}_pb_h5ad")
+            if isinstance(colnames, str):
+                adata_sub.write_h5ad(f"{out_dir}/{pref}_{colnames}_pb_h5ad")
+            else:
+                adata_sub.write_h5ad(f"{out_dir}/{pref}_{'_'.join(colnames)}_pb_h5ad")
+            
     else:
         adata_pb_merged.write_h5ad(f"{out_dir}/{pref}_pb_h5ad")
 
