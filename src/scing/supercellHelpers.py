@@ -153,8 +153,8 @@ def pseudobulk_pipeline(adata:ad.AnnData, stratify_by, save_by=None,
 
     Args:
         adata: AnnData scRNAseq object with raw counts
-        stratify_cols: columns for stratified pseudobulking
-        save_cols: columns for stratified saving of pseudobulk (must be present in stratify_by)
+        stratify_by: columns for stratified pseudobulking
+        save_by: columns for stratified saving of pseudobulk (must be present in stratify_by)
         n_hvgs: number of highly variable genes for preprocessing
         n_pcs: number of PCs for preprocessing
         n_neighbors: number of nearest neighbors for preprocessing
