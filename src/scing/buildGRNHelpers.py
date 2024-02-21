@@ -1,7 +1,7 @@
 import scanpy as sc
 import pandas as pd
 import numpy as np
-from scipy.sparse import load_npz
+from scipy.sparse import load_npz, csr_matrix
 from distributed import LocalCluster, Client
 import os
 from sklearn.ensemble import GradientBoostingRegressor
@@ -12,10 +12,13 @@ from dask.dataframe import from_delayed
 
 class grnBuilder:
     def __init__(self, adata, ngenes, nneighbors, npcs, subsample_perc,
-                 prefix, outdir, ncore, mem_per_core, verbose):
+                 prefix, outdir, ncore, mem_per_core, verbose, random_state=0):
 
         self.adata = adata
-        self.dge = pd.DataFrame(adata.X.T)
+        if isinstance(adata.X, csr_matrix):
+            self.dge = pd.DataFrame(adata.X.T.toarray())
+        else:
+            self.dge = pd.DataFrame(adata.X.T)
         self.dge.index = self.adata.var.index
         
         self.ngenes = ngenes
@@ -34,6 +37,7 @@ class grnBuilder:
 
         self.verbose = verbose
         file_name = self.outdir + self.prefix + '.csv.gz'
+        self.random_state = random_state
 
             
     def pipeline(self):
@@ -59,7 +63,7 @@ class grnBuilder:
         if self.subsample_percentage <= 0:
             print('Please put a subsample percentage between 0 and 1')
             quit()
-
+        np.random.seed(self.random_state)
         self.dge = self.dge.sample(frac=self.subsample_percentage,
                                    axis=1,
                                    replace=False)
@@ -309,7 +313,7 @@ def grad_boost_reg(temp_dge_input, target_gene, input_genes, early_stop_window_l
                                        learning_rate=0.01,
                                        subsample=0.9,
                                        max_features='sqrt',
-                                       verbose=0).fit(temp_dge_input.loc[input_genes, :].T,
+                                       verbose=0, random_state=0).fit(temp_dge_input.loc[input_genes, :].T,
                                                       gene_vec_input,
                                                       monitor=EarlyStopMonitor(early_stop_window_length))
 
