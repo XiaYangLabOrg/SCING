@@ -3,8 +3,9 @@ import numpy as np
 from pyitlib import discrete_random_variable as drv
 import networkx as nx
 import os
-from scipy.sparse import load_npz
+from scipy.sparse import load_npz, csr_matrix
 from scipy.stats import chi2
+
 
 from distributed import LocalCluster, Client
 from dask import delayed
@@ -13,17 +14,21 @@ from dask.dataframe import from_delayed
 class NetworkMerger:
 
     def __init__(self, adata, networks,
-                 minimum_edge_appearance_threshold,prefix,
-                 outdir, ncore, mem_per_core,
+                 minimum_edge_appearance_threshold, cycles,
+                 prefix,outdir, ncore, mem_per_core,
                  verbose):
 
         self.adata = adata
-        self.dge = pd.DataFrame(adata.X.T)
+        if isinstance(adata.X, csr_matrix):
+            self.dge = pd.DataFrame(adata.X.T.toarray())
+        else:
+            self.dge = pd.DataFrame(adata.X.T)
         self.dge.index = self.adata.var.index
         
         self.networks = networks
         
         self.frac_networks = minimum_edge_appearance_threshold
+        self.cycles = cycles
 
         self.prefix = prefix
         self.outdir = outdir
@@ -127,6 +132,12 @@ class NetworkMerger:
         """
         Removes the weakest edge in each cycle
         """
+        if not self.cycles:
+            self.print('Keeping cycles')
+            self.edge_df = self.summarized_network[['From','To','Weight']]
+            self.edge_df.columns = ['source','target','importance']
+            return
+
         self.print('Removing cycles...')
         g = nx.DiGraph()
         for tup in self.summarized_network.itertuples():
