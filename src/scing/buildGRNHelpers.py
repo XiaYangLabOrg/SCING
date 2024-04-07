@@ -11,8 +11,18 @@ from dask.dataframe import from_delayed
 
 
 class grnBuilder:
-    def __init__(self, adata, ngenes, nneighbors, npcs, subsample_perc,
-                 prefix, outdir, ncore, mem_per_core, verbose, random_state=0):
+    def __init__(self,
+         adata,
+         ngenes: int,
+         nneighbors: int,
+         npcs: int,
+         subsample_perc: float,
+         prefix: str,
+         outdir: str,
+         ncore: int,
+         mem_per_core: int,
+         verbose: bool,
+         random_state: int = 0) -> None:
 
         self.adata = adata
         if isinstance(adata.X, csr_matrix):
