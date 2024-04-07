@@ -1,3 +1,6 @@
+import cProfile
+import pstats
+
 import scanpy as sc
 import pandas as pd
 import numpy as np
@@ -189,6 +192,10 @@ def pseudobulk_pipeline(adata:ad.AnnData, stratify_by, save_by=None,
     Returns:
         None
     """
+
+    profiler = cProfile.Profile()
+    profiler.enable() # begin profiling 
+    
     adata_proc = preprocess(adata, n_hvgs=n_hvgs, n_pcs=n_pcs, n_neighbors=n_neighbors)
     if verbose:
         print(adata_proc.obs[stratify_by].value_counts())
@@ -251,6 +258,10 @@ def pseudobulk_pipeline(adata:ad.AnnData, stratify_by, save_by=None,
             outfile = "pb.h5ad"
         adata_pb_merged.write_h5ad(f"{out_dir}/{outfile}")
 
+    # end profiling
+    profiler.disable()
+    profiler.dump_stats('supercell_profile_stats')
+        
     return
 
 
