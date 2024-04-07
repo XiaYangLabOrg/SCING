@@ -1,3 +1,6 @@
+import cProfile
+import pstats
+
 import pandas as pd
 import numpy as np
 from pyitlib import discrete_random_variable as drv
@@ -36,6 +39,8 @@ class NetworkMerger:
         self.memory_per_core = mem_per_core
 
         self.verbose = verbose
+        
+        self.profiler = cProfile.Profile()
 
 
     def preprocess_network_files(self):
@@ -283,6 +288,9 @@ class NetworkMerger:
 
     def pipeline(self):
 
+        # begin profiling
+        profiler.enable()
+        
         self.preprocess_network_files()
         
         self.remove_reversed_edges()
@@ -293,7 +301,10 @@ class NetworkMerger:
         self.remove_redundant_edges()
 
         self.save_network()
-
+        
+        # end profiling
+        profiler.disable()
+        profiler.dump_stats('profile_stats')
 
 # function taken from arboreto/GRNBOOST2
 def _prepare_client(client_or_address):
