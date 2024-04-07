@@ -289,7 +289,7 @@ class NetworkMerger:
     def pipeline(self):
 
         # begin profiling
-        profiler.enable()
+        self.profiler.enable()
         
         self.preprocess_network_files()
         
@@ -303,8 +303,8 @@ class NetworkMerger:
         self.save_network()
         
         # end profiling
-        profiler.disable()
-        profiler.dump_stats('profile_stats')
+        self.profiler.disable()
+        self.profiler.dump_stats('merge_network_profile_stats')
 
 # function taken from arboreto/GRNBOOST2
 def _prepare_client(client_or_address):
