@@ -1,3 +1,6 @@
+import cProfile
+import pstats
+
 import scanpy as sc
 import pandas as pd
 import numpy as np
@@ -189,6 +192,9 @@ def pseudobulk_pipeline(adata:ad.AnnData, stratify_by, save_by=None,
     Returns:
         None
     """
+
+
+    
     adata_proc = preprocess(adata, n_hvgs=n_hvgs, n_pcs=n_pcs, n_neighbors=n_neighbors)
     if verbose:
         if stratify_by:
@@ -265,7 +271,7 @@ def pseudobulk_pipeline(adata:ad.AnnData, stratify_by, save_by=None,
         else:
             outfile = "pseudobulk.h5ad"
         adata_pb_merged.write_h5ad(f"{out_dir}/{outfile}")
-
+        
     return
 
 
@@ -389,7 +395,10 @@ def get_merged_dataset(adata_all, obs):
 
     return all_merged
 
-def supercell_pipeline(adata, ngenes=2000, npcs=20,ncell=500,verbose=True):
+def supercell_pipeline(adata, ngenes=2000, npcs=20,ncell=500,verbose=True, profiler_output_file=""):
+    profiler = cProfile.Profile()
+    profiler.enable() # begin profiling 
+    
     saved_counts = adata.X.copy()
     
     # Run PCA and find nearest neighbors
@@ -404,5 +413,9 @@ def supercell_pipeline(adata, ngenes=2000, npcs=20,ncell=500,verbose=True):
     sc.pp.normalize_total(adata, target_sum=1e4)
     if verbose: print('merging cells...')
     merged_data = get_merged_dataset(adata, temp.obs)
+
+    # end profiling
+    profiler.disable()
+    profiler.dump_stats(profiler_output_file)
     
     return merged_data
