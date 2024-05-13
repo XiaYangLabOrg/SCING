@@ -191,42 +191,57 @@ def pseudobulk_pipeline(adata:ad.AnnData, stratify_by, save_by=None,
     """
     adata_proc = preprocess(adata, n_hvgs=n_hvgs, n_pcs=n_pcs, n_neighbors=n_neighbors)
     if verbose:
-        print(adata_proc.obs[stratify_by].value_counts())
+        if stratify_by:
+            print(adata_proc.obs[stratify_by].value_counts())
     
     # Pseudobulk on each cell type separately
-    adata_pb_list = []
-    for colnames,df in adata_proc.obs.groupby(stratify_by):
-        if verbose:
-            print(colnames)
-        adata_ct = adata_proc[df.index]
-        # get cell neighbors either reclustered within group or using original neighbor graph
-        if recluster:
-            if adata_ct.shape[0] < n_neighbors:
-                print(f"number of cells ({adata_ct.shape[0]}) is less than n_neighbors ({n_neighbors})... skipping")
+    if stratify_by:
+        adata_pb_list = []
+        for colnames,df in adata_proc.obs.groupby(stratify_by):
+            if verbose:
+                print(colnames)
+            adata_ct = adata_proc[df.index]
+            # get cell neighbors either reclustered within group or using original neighbor graph
+            if recluster:
+                if adata_ct.shape[0] < n_neighbors:
+                    print(f"number of cells ({adata_ct.shape[0]}) is less than n_neighbors ({n_neighbors})... skipping")
+                    continue
+                cell_neighbors = KNN(adata_ct, n_neighbors=pb_n_neighbors)
+            else:
+                cell_neighbors = get_knn_adj_list(adata_ct, n_neighbors=pb_n_neighbors)
+            if verbose:
+                print(f"Finding pseudobulk cells using {pb_n_neighbors} neighbors and {pb_max_overlap} max overlap cells")
+            P = find_pb_cells(cell_neighbors, n_neighbors=pb_n_neighbors, max_overlap=pb_max_overlap,random_state=random_state)
+            # skip pseudobulk if there are too few cells
+            if len(P) < min_pb_pergroup:
+                print(f'too few pseudobulk cells for {".".join(colnames)}. skipping...')
                 continue
-            cell_neighbors = KNN(adata_ct, n_neighbors=pb_n_neighbors)
-        else:
-            cell_neighbors = get_knn_adj_list(adata_ct, n_neighbors=pb_n_neighbors)
+            adata_pb = smooth_pseudobulk(adata_raw=adata, 
+                                        P=P,
+                                        K=cell_neighbors,
+                                        celltype_names=adata_ct.obs_names,
+                                        n_pb=max_pb_pergroup,
+                                        random_state=random_state)
+            adata_pb.obs_names = ".".join(colnames)+"."+adata_pb.obs_names
+            for idx in range(len(stratify_by)):
+                adata_pb.obs[stratify_by[idx]] = colnames[idx]
+            adata_pb_list.append(adata_pb)
+        adata_pb_merged = ad.concat(adata_pb_list)
+    else:
+        cell_neighbors = get_knn_adj_list(adata_proc, n_neighbors=pb_n_neighbors)
         if verbose:
             print(f"Finding pseudobulk cells using {pb_n_neighbors} neighbors and {pb_max_overlap} max overlap cells")
-        P = find_pb_cells(cell_neighbors, n_neighbors=pb_n_neighbors, max_overlap=pb_max_overlap,random_state=random_state)
-        # skip pseudobulk if there are too few cells
-        if len(P) < min_pb_pergroup:
-            print(f'too few pseudobulk cells for {".".join(colnames)}. skipping...')
-            continue
-        adata_pb = smooth_pseudobulk(adata_raw=adata, 
-                                    P=P,
-                                    K=cell_neighbors,
-                                    celltype_names=adata_ct.obs_names,
-                                    n_pb=max_pb_pergroup,
-                                    random_state=random_state)
-        adata_pb.obs_names = ".".join(colnames)+"."+adata_pb.obs_names
-        for idx in range(len(stratify_by)):
-            adata_pb.obs[stratify_by[idx]] = colnames[idx]
-        adata_pb_list.append(adata_pb)
-    
-    adata_pb_merged = ad.concat(adata_pb_list)
-    
+            P = find_pb_cells(cell_neighbors, n_neighbors=pb_n_neighbors, max_overlap=pb_max_overlap,random_state=random_state)
+            if len(P) < min_pb_pergroup:
+                print(f'too few pseudobulk cells. skipping...')
+            else:
+                adata_pb_merged = smooth_pseudobulk(adata_raw=adata, 
+                                        P=P,
+                                        K=cell_neighbors,
+                                        celltype_names=adata_proc.obs_names,
+                                        n_pb=max_pb_pergroup,
+                                        random_state=random_state)
+
     if save_by:
         if verbose:
             print(f"saving pseudobulk adata by {', '.join(save_by)}")
@@ -234,21 +249,21 @@ def pseudobulk_pipeline(adata:ad.AnnData, stratify_by, save_by=None,
             adata_sub = adata_pb_merged[df.index].copy()
             remove_empty_genes(adata_sub)
             if pref and isinstance(colnames, str):
-                outfile = f"{pref}_{colnames}_pb.h5ad"
+                outfile = f"{pref}_{colnames}.h5ad"
             elif not pref and isinstance(colnames, str):
-                outfile = f"{colnames}_pb.h5ad"
+                outfile = f"{colnames}.h5ad"
             elif pref and not isinstance(colnames, str):
-                outfile = f"{pref}_{'_'.join(colnames)}_pb.h5ad"
+                outfile = f"{pref}_{'_'.join(colnames)}.h5ad"
             else:
-                outfile = f"{'_'.join(colnames)}_pb.h5ad"
+                outfile = f"{'_'.join(colnames)}.h5ad"
             adata_sub.write_h5ad(f"{out_dir}/{outfile}")            
     else:
         if verbose:
             print("saving pseudobulk adata")
         if pref:
-            outfile = f"{pref}_pb.h5ad"
+            outfile = f"{pref}.h5ad"
         else:
-            outfile = "pb.h5ad"
+            outfile = "pseudobulk.h5ad"
         adata_pb_merged.write_h5ad(f"{out_dir}/{outfile}")
 
     return

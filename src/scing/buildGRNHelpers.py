@@ -29,14 +29,10 @@ class grnBuilder:
         self.prefix = prefix
         if outdir[-1] != '/':
             outdir = outdir + '/'
-            
         self.outdir = outdir
-
         self.ncores = ncore
         self.memory = mem_per_core * ncore
-
         self.verbose = verbose
-        file_name = self.outdir + self.prefix + '.csv.gz'
         self.random_state = random_state
 
             
