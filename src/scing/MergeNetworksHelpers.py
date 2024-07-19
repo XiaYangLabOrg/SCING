@@ -251,6 +251,9 @@ class NetworkMerger:
             all_removal_edges = edges_removal_df.repartition(npartitions=n_parts)
             self.print('Computing dask graph...')
             computed_edges_to_remove = client.compute(all_removal_edges, sync=True)
+            # self.print('Closing client...')
+            # client.close()
+            # loc_cluster.close()
 
         except:
             self.print('Closing client...')

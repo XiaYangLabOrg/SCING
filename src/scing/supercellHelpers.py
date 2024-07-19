@@ -395,10 +395,7 @@ def get_merged_dataset(adata_all, obs):
 
     return all_merged
 
-def supercell_pipeline(adata, ngenes=2000, npcs=20,ncell=500,verbose=True, profiler_output_file=""):
-    profiler = cProfile.Profile()
-    profiler.enable() # begin profiling 
-    
+def supercell_pipeline(adata, ngenes=2000, npcs=20,ncell=500,verbose=True):
     saved_counts = adata.X.copy()
     
     # Run PCA and find nearest neighbors
@@ -414,8 +411,4 @@ def supercell_pipeline(adata, ngenes=2000, npcs=20,ncell=500,verbose=True, profi
     if verbose: print('merging cells...')
     merged_data = get_merged_dataset(adata, temp.obs)
 
-    # end profiling
-    profiler.disable()
-    profiler.dump_stats(profiler_output_file)
-    
     return merged_data

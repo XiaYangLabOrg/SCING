@@ -41,7 +41,7 @@ class grnBuilder:
             outdir = outdir + '/'
         self.outdir = outdir
         self.ncores = ncore
-        self.memory = mem_per_core * ncore
+        self.memory = mem_per_core
         self.verbose = verbose
         self.random_state = random_state
 
